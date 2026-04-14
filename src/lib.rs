@@ -44,19 +44,65 @@ macro_rules! bio_rule {
     };
 }
 
+/// Ordinary differential equation on a **behavior** (rate `d behavior / dt = rhs`).
+///
+/// Optional `, bounded_by (lo, hi)` clamps the integrated value after each step (e.g. normalized
+/// gene activity in `[0, 1]`).
+///
+/// **Microenvironment vs parameters:** use [`signal`](crate::expr::signal) for cues present in
+/// [`CellState::signals`](crate::model::CellState::signals), or [`param`](crate::expr::param) for
+/// the same names—[`Model::step`](crate::model::Model::step) copies signals into both `signals` and
+/// `params` on the ODE [`EvalContext`](crate::expr::EvalContext).
 #[macro_export]
 macro_rules! bio_ode {
     (
         in $cell:expr, d $beh:literal / dt = $rhs:expr
+        $( , bounded_by ($blo:expr, $bhi:expr) )?
     ) => {{
         let rate = { $rhs };
+        #[allow(unused_mut)]
+        let mut __bounds: ::core::option::Option<(f64, f64)> = ::core::option::Option::None;
+        $(
+            __bounds = ::core::option::Option::Some(($blo, $bhi));
+        )?
         $crate::OdeRule {
             cell_type: $cell.into(),
             behavior: $beh.into(),
             rate_expr: rate,
-            bounds: None,
+            bounds: __bounds,
         }
     }};
+}
+
+/// Semicolon-separated list of [`bio_ode!`](crate::bio_ode) equations (gene–gene / protein–protein
+/// coupling, mass-action, etc.).
+#[macro_export]
+macro_rules! bio_ode_system {
+    (
+        $(
+            in $cell:expr, d $beh:literal / dt = $rhs:expr
+            $( , bounded_by ($blo:expr, $bhi:expr) )?
+        );*
+        $(;)?
+    ) => {{
+        vec![
+            $(
+                $crate::bio_ode! {
+                    in $cell, d $beh / dt = $rhs
+                    $( , bounded_by ($blo, $bhi) )?
+                }
+            ),*
+        ]
+    }};
+}
+
+/// Alias for [`bio_ode_system!`](crate::bio_ode_system): treat **behaviors** as gene (or protein)
+/// activity levels coupled by ODEs.
+#[macro_export]
+macro_rules! bio_grn {
+    ($($t:tt)*) => {
+        $crate::bio_ode_system! { $($t)* }
+    };
 }
 
 #[macro_export]
@@ -70,6 +116,13 @@ macro_rules! bio_model {
                     with $( $param:ident = $pval:expr ),+ $(,)?;
             )*
         }
+        $( odes: {
+            $(
+                in $ocell:expr, d $obeh:literal / dt = $orhs:expr
+                $( , bounded_by ($oblo:expr, $obhi:expr) )?
+            );*
+            $(;)?
+        } )?
     ) => {{
         let mut _rules = Vec::new();
         let mut _bv = $crate::BaseValueMap::default();
@@ -84,6 +137,15 @@ macro_rules! bio_model {
                 with $( $param = $pval ),+
             });
         )*
-        $crate::Model::from_rules($name, _rules, _bv, None).expect("model compile")
+        let mut _m = $crate::Model::from_rules($name, _rules, _bv, None).expect("model compile");
+        $(
+            _m = _m.with_ode_rules($crate::bio_ode_system! {
+                $(
+                    in $ocell, d $obeh / dt = $orhs
+                    $( , bounded_by ($oblo, $obhi) )?
+                );*
+            });
+        )?
+        _m
     }};
 }

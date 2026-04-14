@@ -13,11 +13,13 @@
 //!   (*Nat. Immunol.* 2000; subsequent GC B cell work).
 //!
 //! State variables are dimensionless activity levels in \([0, 1]\) (not absolute mRNA counts).
+//! The ODE list is emitted with [`crate::bio_grn!`] so the same macro surface used for other
+//! gene–gene models applies here; strengths come from [`GcGrnParams`].
 
+use crate::compile::BaseValueMap;
 use crate::expr::{behavior, const_, hill, param};
 use crate::model::Model;
 use crate::rule::OdeRule;
-use crate::compile::BaseValueMap;
 
 /// Default production / coupling strengths (order-of-magnitude; tune for a specific dataset).
 #[derive(Clone, Debug)]
@@ -59,62 +61,45 @@ impl Default for GcGrnParams {
     }
 }
 
-/// \(\Phi(u) = u^n / (h^n + u^n)\) with `u` a behavior level.
+macro_rules! germinal_center_gc_grn_odes_for {
+    ($p:ident) => {
+        $crate::bio_grn! {
+            in "gc_B_cell", d "FOXO1" / dt =
+                const_($p.alpha_f) * hill(param("Tfh_help"), $p.half_help_on_foxo, $p.n_hill)
+                    * (const_(1.0) - const_($p.k_pi3k) * param("Tfh_help"))
+                - const_($p.delta_f) * behavior("FOXO1")
+                + const_(0.08) * behavior("BCL6") * behavior("FOXO1")
+                    * (const_(1.0) - behavior("FOXO1")),
+                bounded_by (0.0, 1.0);
+
+            in "gc_B_cell", d "BCL6" / dt =
+                const_($p.alpha_b) * behavior("FOXO1") * behavior("BCL6")
+                    * (const_(1.0) - behavior("BCL6"))
+                + const_(0.12) * behavior("FOXO1") * (const_(1.0) - behavior("BCL6"))
+                - const_($p.delta_b) * behavior("BCL6"),
+                bounded_by (0.0, 1.0);
+
+            in "gc_B_cell", d "AICDA" / dt =
+                const_($p.alpha_a)
+                    * (const_(0.55) * hill(behavior("BCL6"), $p.half_bcl6_on_aid, $p.n_hill)
+                        + const_(0.45) * hill(behavior("FOXO1"), $p.half_foxo_on_aid, $p.n_hill))
+                    * (const_(1.0) - behavior("AICDA"))
+                - const_($p.delta_a) * behavior("AICDA"),
+                bounded_by (0.0, 1.0);
+
+            in "gc_B_cell", d "CXCR4" / dt =
+                const_($p.alpha_x)
+                    * hill(param("CXCL12"), $p.half_cxcl12_on_cxcr4, $p.n_hill)
+                    * behavior("FOXO1")
+                    * (const_(1.0) - behavior("CXCR4"))
+                - const_($p.delta_x) * behavior("CXCR4"),
+                bounded_by (0.0, 1.0);
+        }
+    };
+}
+
 pub fn germinal_center_gc_grn_odes(p: &GcGrnParams) -> Vec<OdeRule> {
-    let tfh = param("Tfh_help");
-    let cxcl12 = param("CXCL12");
-    let foxo = behavior("FOXO1");
-    let bcl6 = behavior("BCL6");
-    let aicda = behavior("AICDA");
-    let cxcr4 = behavior("CXCR4");
-
-    let help_on_foxo = hill(tfh.clone(), p.half_help_on_foxo, p.n_hill);
-    let cxcl12_on_cxcr4 = hill(cxcl12.clone(), p.half_cxcl12_on_cxcr4, p.n_hill);
-    let bcl6_on_aid = hill(bcl6.clone(), p.half_bcl6_on_aid, p.n_hill);
-    let foxo_on_aid = hill(foxo.clone(), p.half_foxo_on_aid, p.n_hill);
-
-    let pi3k = const_(p.k_pi3k) * tfh.clone();
-    let foxo_rhs = const_(p.alpha_f) * help_on_foxo * (const_(1.0) - pi3k.clone())
-        - const_(p.delta_f) * foxo.clone()
-        + const_(0.08) * bcl6.clone() * foxo.clone() * (const_(1.0) - foxo.clone());
-
-    let bcl6_rhs = const_(p.alpha_b) * foxo.clone() * bcl6.clone() * (const_(1.0) - bcl6.clone())
-        + const_(0.12) * foxo.clone() * (const_(1.0) - bcl6.clone())
-        - const_(p.delta_b) * bcl6.clone();
-
-    let aid_drive = const_(0.55) * bcl6_on_aid + const_(0.45) * foxo_on_aid;
-    let aicda_rhs =
-        const_(p.alpha_a) * aid_drive * (const_(1.0) - aicda.clone()) - const_(p.delta_a) * aicda.clone();
-
-    let cxcr4_rhs = const_(p.alpha_x) * cxcl12_on_cxcr4 * foxo.clone() * (const_(1.0) - cxcr4.clone())
-        - const_(p.delta_x) * cxcr4.clone();
-
-    vec![
-        OdeRule {
-            cell_type: "gc_B_cell".into(),
-            behavior: "FOXO1".into(),
-            rate_expr: foxo_rhs,
-            bounds: Some((0.0, 1.0)),
-        },
-        OdeRule {
-            cell_type: "gc_B_cell".into(),
-            behavior: "BCL6".into(),
-            rate_expr: bcl6_rhs,
-            bounds: Some((0.0, 1.0)),
-        },
-        OdeRule {
-            cell_type: "gc_B_cell".into(),
-            behavior: "AICDA".into(),
-            rate_expr: aicda_rhs,
-            bounds: Some((0.0, 1.0)),
-        },
-        OdeRule {
-            cell_type: "gc_B_cell".into(),
-            behavior: "CXCR4".into(),
-            rate_expr: cxcr4_rhs,
-            bounds: Some((0.0, 1.0)),
-        },
-    ]
+    germinal_center_gc_grn_odes_for!(p)
 }
 
 pub fn germinal_center_gc_grn_model(p: &GcGrnParams) -> Model {

@@ -33,3 +33,7 @@ path = "examples/gc_grn.rs"
 [[example]]
 name = "gc_grn_wt_vs_ko"
 path = "examples/gc_grn_wt_vs_ko.rs"
+
+[[example]]
+name = "grn_macros"
+path = "examples/grn_macros.rs"

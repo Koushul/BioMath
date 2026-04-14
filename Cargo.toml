@@ -27,13 +27,5 @@ name = "logistic_growth"
 path = "examples/logistic_growth.rs"
 
 [[example]]
-name = "gc_grn"
-path = "examples/gc_grn.rs"
-
-[[example]]
-name = "gc_grn_wt_vs_ko"
-path = "examples/gc_grn_wt_vs_ko.rs"
-
-[[example]]
 name = "two_gene"
 path = "examples/two_gene.rs"

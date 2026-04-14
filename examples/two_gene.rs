@@ -1,8 +1,8 @@
 use bio_math::model::CellState;
-use bio_math::{const_, cue, gene, grn, hill, Model};
+use bio_math::{const_, cue, gene, bio_ode_system, hill, Model};
 
 fn main() {
-    let odes = grn! {
+    let odes = bio_ode_system! {
         in "cell", d "A" / dt =
             const_(0.2) * hill(cue!(S), 0.5, 2.0) * (const_(1.0) - gene!(A))
             - const_(0.1) * gene!(A),

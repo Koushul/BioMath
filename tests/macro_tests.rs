@@ -1,9 +1,7 @@
 use approx::assert_relative_eq;
 use std::collections::HashMap;
 
-use bio_math::{
-    bio_grn, bio_model, bio_ode, bio_ode_system, bio_rule, cue, gene, grn, ode, signal_rule,
-};
+use bio_math::{bio_model, bio_ode, bio_ode_system, bio_rule, cue, gene};
 use bio_math::expr::{behavior, const_, param, EvalContext};
 use bio_math::response::ResponseFnKind;
 use bio_math::rule::Response;
@@ -21,21 +19,6 @@ fn bio_rule_increases() {
     assert_eq!(r.max_response, 0.0005);
     assert!(matches!(r.response_fn, ResponseFnKind::Hill { half_max, hill_power }
         if (half_max - 5.0).abs() < 1e-12 && (hill_power - 4.0).abs() < 1e-12));
-}
-
-#[test]
-fn signal_rule_matches_bio_rule() {
-    let a = bio_rule! {
-        in "tumor", "oxygen", increases, "cycle entry" ,
-        with half_max = 5.0, hill_power = 4.0, max_response = 0.0005
-    };
-    let b = signal_rule! {
-        in "tumor", "oxygen", increases, "cycle entry" ,
-        with half_max = 5.0, hill_power = 4.0, max_response = 0.0005
-    };
-    assert_eq!(a.cell_type, b.cell_type);
-    assert_eq!(a.signal, b.signal);
-    assert_eq!(a.behavior, b.behavior);
 }
 
 #[test]
@@ -106,18 +89,6 @@ fn bio_ode_clamp01() {
 }
 
 #[test]
-fn ode_alias_matches_bio_ode() {
-    let a = ode! {
-        in "c", d "x" / dt = const_(1.0)
-    };
-    let b = bio_ode! {
-        in "c", d "x" / dt = const_(1.0)
-    };
-    assert_eq!(a.behavior, b.behavior);
-    assert_eq!(a.bounds, b.bounds);
-}
-
-#[test]
 fn gene_and_cue_expand() {
     let mut ctx = EvalContext::default();
     ctx.behaviors.insert("TP53".into(), 0.25);
@@ -140,68 +111,6 @@ fn bio_ode_system_two_genes() {
 }
 
 #[test]
-fn grn_matches_ode_system() {
-    let a = grn! {
-        in "c", d "u" / dt = const_(0.0), bounded_by (0.0, 1.0);
-    };
-    let b = bio_ode_system! {
-        in "c", d "u" / dt = const_(0.0), bounded_by (0.0, 1.0);
-    };
-    assert_eq!(a.len(), b.len());
-    assert_eq!(a[0].behavior, b[0].behavior);
-}
-
-#[test]
-fn bio_grn_alias_matches_grn() {
-    let a = bio_grn! {
-        in "c", d "u" / dt = const_(0.0), bounded_by (0.0, 1.0);
-    };
-    let b = grn! {
-        in "c", d "u" / dt = const_(0.0), bounded_by (0.0, 1.0);
-    };
-    assert_eq!(a[0].behavior, b[0].behavior);
-}
-
-#[test]
-fn bio_model_with_grn_block() {
-    let m = bio_model! {
-        name: "rules_plus_grn",
-        base_values: {
-            ("tumor", "cycle") => 0.0001,
-        }
-        rules: {
-            in "tumor", "oxygen", increases, "cycle" ,
-                with half_max = 5.0, hill_power = 4.0, max_response = 0.0005;
-        }
-        grn: {
-            in "tumor", d "gene_x" / dt = const_(0.0), bounded_by (0.0, 1.0);
-        }
-    };
-    assert_eq!(m.ode_rules.len(), 1);
-    assert_eq!(m.ode_rules[0].behavior, "gene_x");
-    let env: HashMap<String, f64> = [("oxygen".into(), 5.0)].into_iter().collect();
-    let b = m.evaluate("tumor", &env);
-    assert!(b.contains_key("cycle"));
-}
-
-#[test]
-fn bio_model_grn_and_odes_merge() {
-    let m = bio_model! {
-        name: "both_ode_blocks",
-        rules: {}
-        grn: {
-            in "a", d "g1" / dt = const_(0.0), bounded_by (0.0, 1.0);
-        }
-        odes: {
-            in "a", d "g2" / dt = const_(0.0), bounded_by (0.0, 1.0);
-        }
-    };
-    assert_eq!(m.ode_rules.len(), 2);
-    assert_eq!(m.ode_rules[0].behavior, "g1");
-    assert_eq!(m.ode_rules[1].behavior, "g2");
-}
-
-#[test]
 fn bio_model_with_odes_block() {
     let m = bio_model! {
         name: "rules_plus_odes",
@@ -213,11 +122,14 @@ fn bio_model_with_odes_block() {
                 with half_max = 5.0, hill_power = 4.0, max_response = 0.0005;
         }
         odes: {
-            in "tumor", d "gene_y" / dt = const_(0.0), bounded_by (0.0, 1.0);
+            in "tumor", d "gene_x" / dt = const_(0.0), bounded_by (0.0, 1.0);
         }
     };
     assert_eq!(m.ode_rules.len(), 1);
-    assert_eq!(m.ode_rules[0].behavior, "gene_y");
+    assert_eq!(m.ode_rules[0].behavior, "gene_x");
+    let env: HashMap<String, f64> = [("oxygen".into(), 5.0)].into_iter().collect();
+    let b = m.evaluate("tumor", &env);
+    assert!(b.contains_key("cycle"));
 }
 
 #[test]

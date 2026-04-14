@@ -29,3 +29,7 @@ path = "examples/logistic_growth.rs"
 [[example]]
 name = "gc_grn"
 path = "examples/gc_grn.rs"
+
+[[example]]
+name = "gc_grn_wt_vs_ko"
+path = "examples/gc_grn_wt_vs_ko.rs"

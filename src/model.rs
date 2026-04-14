@@ -113,6 +113,7 @@ impl Model {
         let mut ctx = EvalContext::default();
         for (k, v) in &state.signals {
             ctx.signals.insert(k.clone(), *v);
+            ctx.params.insert(k.clone(), *v);
         }
         for (k, v) in &state.behaviors {
             ctx.behaviors.insert(k.clone(), *v);

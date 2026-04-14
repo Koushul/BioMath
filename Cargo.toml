@@ -25,3 +25,7 @@ path = "examples/pdac_caf.rs"
 [[example]]
 name = "logistic_growth"
 path = "examples/logistic_growth.rs"
+
+[[example]]
+name = "gc_grn"
+path = "examples/gc_grn.rs"

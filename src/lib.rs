@@ -3,6 +3,7 @@ pub mod dictionary;
 pub mod error;
 pub mod expr;
 pub mod export;
+pub mod germinal_center_gc;
 pub mod integrate;
 pub mod model;
 pub mod response;

@@ -3,6 +3,7 @@ pub mod dictionary;
 pub mod error;
 pub mod expr;
 pub mod export;
+pub mod grammar;
 pub mod integrate;
 pub mod model;
 pub mod response;
@@ -15,6 +16,10 @@ pub use dictionary::{
     BehaviorDef, BehaviorKind, Dictionary, SignalCategory, SignalDef, Warning,
 };
 pub use error::{BioMathError, CompileError};
+pub use grammar::{
+    combined_behavior_latex, parse_rule_fields, parse_rule_row, rules_from_csv_str,
+    rule_to_grammar_english,
+};
 pub use expr::{behavior, const_, hill, param, signal, EvalContext, Expr};
 pub use integrate::{Euler, Integrator, Rk4};
 pub use model::{CellState, EvalRequest, EvalResponse, Model, SignalEnv};
@@ -132,7 +137,8 @@ macro_rules! bio_ode_system {
     }};
 }
 
-/// **Model:** optional `rules:` (microenvironment → behavior); optional `odes:` (coupled ODEs,
+/// **Model:** optional `rules:` (microenvironment → behavior); optional `paper_csv: ( ... )`
+/// (embedded *Cell* 2025-style CSV string); optional `odes:` (coupled ODEs,
 /// [`bio_ode_system!`](crate::bio_ode_system) syntax).
 #[macro_export]
 macro_rules! bio_model {
@@ -145,6 +151,7 @@ macro_rules! bio_model {
                     with $( $param:ident = $pval:expr ),+ $(,)?;
             )*
         }
+        $( paper_csv: ( $paper_csv:expr ) )?
         $( odes: { $($ode_body:tt)* } )?
     ) => {{
         let mut _rules = Vec::new();
@@ -160,6 +167,13 @@ macro_rules! bio_model {
                 with $( $param = $pval ),+
             });
         )*
+        $(
+            {
+                let __extra = $crate::rules_from_csv_str($paper_csv)
+                    .unwrap_or_else(|e| ::core::panic!("paper_csv: {}", e));
+                _rules.extend(__extra);
+            }
+        )?
         let mut _m = $crate::Model::from_rules($name, _rules, _bv, None).expect("model compile");
         $(
             _m = _m.with_ode_rules($crate::bio_ode_system! { $($ode_body)* });

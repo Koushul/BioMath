@@ -29,3 +29,7 @@ path = "examples/logistic_growth.rs"
 [[example]]
 name = "two_gene"
 path = "examples/two_gene.rs"
+
+[[example]]
+name = "paper_oxygen_pressure"
+path = "examples/paper_oxygen_pressure.rs"

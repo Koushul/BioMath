@@ -189,3 +189,24 @@ fn compile_ok_single_rule() {
     bv.insert("tumor", "cycle", 0.0001);
     assert!(compile(rules, &bv, None).is_ok());
 }
+
+#[test]
+fn invalid_linear_thresholds_rejected() {
+    let rules = vec![Rule {
+        cell_type: "tumor".into(),
+        signal: "ECM".into(),
+        response: Response::Increases,
+        behavior: "migration speed".into(),
+        max_response: 10.0,
+        response_fn: ResponseFnKind::Linear {
+            min_threshold: 5.0,
+            max_threshold: 2.0,
+        },
+        applies_to_dead: false,
+        condition: None,
+    }];
+    let err = compile(rules, &BaseValueMap::default(), None).unwrap_err();
+    assert!(err
+        .iter()
+        .any(|e| matches!(e, CompileError::InvalidLinearThresholds { .. })));
+}

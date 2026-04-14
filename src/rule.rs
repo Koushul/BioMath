@@ -71,14 +71,7 @@ impl Rule {
     }
 
     pub fn to_english(&self) -> String {
-        let verb = match self.response {
-            Response::Increases => "increases",
-            Response::Decreases => "decreases",
-        };
-        format!(
-            "In {}, {} {} {}.",
-            self.cell_type, self.signal, verb, self.behavior
-        )
+        crate::grammar::rule_to_grammar_english(self)
     }
 
     pub fn to_latex(&self, b_0: f64, b_m: f64, b_min: f64) -> String {

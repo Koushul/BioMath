@@ -100,20 +100,30 @@ pub fn compile(
                 continue;
             }
         }
-        if let ResponseFnKind::Hill {
-            half_max,
-            hill_power,
-        } = &rule.response_fn
-        {
-            if *half_max < 0.0 {
-                errors.push(CompileError::NegativeHalfMax { rule_index: i });
+        match &rule.response_fn {
+            ResponseFnKind::Hill {
+                half_max,
+                hill_power,
+            } => {
+                if *half_max < 0.0 {
+                    errors.push(CompileError::NegativeHalfMax { rule_index: i });
+                }
+                if *half_max == 0.0 {
+                    errors.push(CompileError::NonPositiveHalfMax { rule_index: i });
+                }
+                if *hill_power < 0.0 {
+                    errors.push(CompileError::NegativeHillPower { rule_index: i });
+                }
             }
-            if *half_max == 0.0 {
-                errors.push(CompileError::NonPositiveHalfMax { rule_index: i });
+            ResponseFnKind::Linear {
+                min_threshold,
+                max_threshold,
+            } => {
+                if max_threshold <= min_threshold {
+                    errors.push(CompileError::InvalidLinearThresholds { rule_index: i });
+                }
             }
-            if *hill_power < 0.0 {
-                errors.push(CompileError::NegativeHillPower { rule_index: i });
-            }
+            ResponseFnKind::Step { .. } | ResponseFnKind::Custom { .. } => {}
         }
     }
     if !errors.is_empty() {

@@ -61,6 +61,9 @@ pub enum CompileError {
     NegativeHillPower {
         rule_index: usize,
     },
+    InvalidLinearThresholds {
+        rule_index: usize,
+    },
     InvalidTransitionTarget {
         from: String,
         to: String,

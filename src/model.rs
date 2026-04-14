@@ -6,6 +6,7 @@ use crate::compile::{
     behavior_rule_set_expr, bilinear, compile, BaseValueMap, BehaviorRuleSet, CompiledModel,
     pooled_d, pooled_u,
 };
+use crate::grammar::combined_behavior_latex;
 use crate::dictionary::Dictionary;
 use crate::error::BioMathError;
 use crate::expr::{EvalContext, Expr};
@@ -113,6 +114,7 @@ impl Model {
         let mut ctx = EvalContext::default();
         for (k, v) in &state.signals {
             ctx.signals.insert(k.clone(), *v);
+            ctx.params.insert(k.clone(), *v);
         }
         for (k, v) in &state.behaviors {
             ctx.behaviors.insert(k.clone(), *v);
@@ -220,5 +222,15 @@ impl Model {
 
     pub fn from_json(s: &str) -> Result<Self, BioMathError> {
         serde_json::from_str(s).map_err(|e| BioMathError::Json(e.to_string()))
+    }
+
+    /// LaTeX for the bilinear combined behavior for each compiled behavior set (Johnson et al. §5.4).
+    pub fn export_grammar_latex(&self) -> String {
+        let mut out = String::new();
+        for set in &self.compiled.behavior_sets {
+            out.push_str(&combined_behavior_latex(set));
+            out.push_str("\n\n");
+        }
+        out
     }
 }

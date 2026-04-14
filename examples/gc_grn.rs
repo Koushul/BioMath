@@ -1,9 +1,10 @@
-use bio_math::germinal_center_gc::{germinal_center_gc_grn_model, GcGrnParams};
+use bio_math::germinal_center_gc::{germinal_center_gc_model, GcGrnParams};
 use bio_math::model::CellState;
 
 fn main() {
-    let p = GcGrnParams::default();
-    let m = germinal_center_gc_grn_model(&p);
+    let params = GcGrnParams::default();
+    let m = germinal_center_gc_model(&params);
+
     let mut state = CellState::default();
     state.behaviors.insert("FOXO1".into(), 0.2);
     state.behaviors.insert("BCL6".into(), 0.15);

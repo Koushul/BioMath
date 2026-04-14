@@ -1,25 +1,11 @@
 //! Coarse gene–regulatory dynamics for germinal-center B cells:
-//! **FOXO1**, **BCL6**, **AICDA**, **CXCR4**, with external cues **Tfh_help**
-//! (CD40 / selection-associated T cell help) and **CXCL12** (SDF-1, dark-zone chemokine).
+//! **FOXO1**, **BCL6**, **AICDA**, **CXCR4**, with cues **Tfh_help** and **CXCL12**.
 //!
-//! Literature anchors (mechanisms encoded qualitatively, not fitted to time courses):
-//! - **FOXO1** promotes GC progression, proliferation, and LZ→DZ transition (e.g. BATF axis);
-//!   PI3K–AKT opposes nuclear FOXO1 (*Immunity* 2015; *Nat. Immunol.* / PMC work on GC FOXO1).
-//! - **BCL6** is the master GC transcriptional repressor; supports **AID** / *AICDA* in part by
-//!   repressing *miR-155* (*Blood* 2012; PMC3526356).
-//! - **FOXO1** is required for normal peripheral B cell programs relevant to CSR / **AID**
-//!   (*Nat. Immunol.* Foxo1 stages of B cell differentiation).
-//! - **CXCR4** enforces dark-zone positioning and DZ/LZ organization with CXCL12 gradients
-//!   (*Nat. Immunol.* 2000; subsequent GC B cell work).
-//!
-//! State variables are dimensionless activity levels in \([0, 1]\) (not absolute mRNA counts).
-//! The ODE list is emitted with [`crate::bio_grn!`] so the same macro surface used for other
-//! gene–gene models applies here; strengths come from [`GcGrnParams`].
+//! Build ODEs with [`germinal_center_gc_odes!`](crate::germinal_center_gc_odes), then attach:
+//! `Model::from_rules(...).unwrap().with_ode_rules(germinal_center_gc_odes!(&params))`.
 
 use crate::compile::BaseValueMap;
-use crate::expr::{behavior, const_, hill, param};
 use crate::model::Model;
-use crate::rule::OdeRule;
 
 /// Default production / coupling strengths (order-of-magnitude; tune for a specific dataset).
 #[derive(Clone, Debug)]
@@ -61,48 +47,48 @@ impl Default for GcGrnParams {
     }
 }
 
-macro_rules! germinal_center_gc_grn_odes_for {
-    ($p:ident) => {
-        $crate::bio_grn! {
+/// Germinal-center GRN ODEs. Pass `&GcGrnParams` (e.g. `&GcGrnParams::default()`).
+#[macro_export]
+macro_rules! germinal_center_gc_odes {
+    ($p:expr) => {{
+        let __p: &$crate::germinal_center_gc::GcGrnParams = $p;
+        $crate::grn! {
             in "gc_B_cell", d "FOXO1" / dt =
-                const_($p.alpha_f) * hill(param("Tfh_help"), $p.half_help_on_foxo, $p.n_hill)
-                    * (const_(1.0) - const_($p.k_pi3k) * param("Tfh_help"))
-                - const_($p.delta_f) * behavior("FOXO1")
-                + const_(0.08) * behavior("BCL6") * behavior("FOXO1")
-                    * (const_(1.0) - behavior("FOXO1")),
+                $crate::const_(__p.alpha_f)
+                    * $crate::hill($crate::cue!(Tfh_help), __p.half_help_on_foxo, __p.n_hill)
+                    * ($crate::const_(1.0) - $crate::const_(__p.k_pi3k) * $crate::cue!(Tfh_help))
+                - $crate::const_(__p.delta_f) * $crate::gene!(FOXO1)
+                + $crate::const_(0.08) * $crate::gene!(BCL6) * $crate::gene!(FOXO1)
+                    * ($crate::const_(1.0) - $crate::gene!(FOXO1)),
                 bounded_by (0.0, 1.0);
 
             in "gc_B_cell", d "BCL6" / dt =
-                const_($p.alpha_b) * behavior("FOXO1") * behavior("BCL6")
-                    * (const_(1.0) - behavior("BCL6"))
-                + const_(0.12) * behavior("FOXO1") * (const_(1.0) - behavior("BCL6"))
-                - const_($p.delta_b) * behavior("BCL6"),
+                $crate::const_(__p.alpha_b) * $crate::gene!(FOXO1) * $crate::gene!(BCL6)
+                    * ($crate::const_(1.0) - $crate::gene!(BCL6))
+                + $crate::const_(0.12) * $crate::gene!(FOXO1) * ($crate::const_(1.0) - $crate::gene!(BCL6))
+                - $crate::const_(__p.delta_b) * $crate::gene!(BCL6),
                 bounded_by (0.0, 1.0);
 
             in "gc_B_cell", d "AICDA" / dt =
-                const_($p.alpha_a)
-                    * (const_(0.55) * hill(behavior("BCL6"), $p.half_bcl6_on_aid, $p.n_hill)
-                        + const_(0.45) * hill(behavior("FOXO1"), $p.half_foxo_on_aid, $p.n_hill))
-                    * (const_(1.0) - behavior("AICDA"))
-                - const_($p.delta_a) * behavior("AICDA"),
+                $crate::const_(__p.alpha_a)
+                    * ($crate::const_(0.55) * $crate::hill($crate::gene!(BCL6), __p.half_bcl6_on_aid, __p.n_hill)
+                        + $crate::const_(0.45) * $crate::hill($crate::gene!(FOXO1), __p.half_foxo_on_aid, __p.n_hill))
+                    * ($crate::const_(1.0) - $crate::gene!(AICDA))
+                - $crate::const_(__p.delta_a) * $crate::gene!(AICDA),
                 bounded_by (0.0, 1.0);
 
             in "gc_B_cell", d "CXCR4" / dt =
-                const_($p.alpha_x)
-                    * hill(param("CXCL12"), $p.half_cxcl12_on_cxcr4, $p.n_hill)
-                    * behavior("FOXO1")
-                    * (const_(1.0) - behavior("CXCR4"))
-                - const_($p.delta_x) * behavior("CXCR4"),
+                $crate::const_(__p.alpha_x)
+                    * $crate::hill($crate::cue!(CXCL12), __p.half_cxcl12_on_cxcr4, __p.n_hill)
+                    * $crate::gene!(FOXO1)
+                    * ($crate::const_(1.0) - $crate::gene!(CXCR4))
+                - $crate::const_(__p.delta_x) * $crate::gene!(CXCR4),
                 bounded_by (0.0, 1.0);
         }
-    };
+    }};
 }
 
-pub fn germinal_center_gc_grn_odes(p: &GcGrnParams) -> Vec<OdeRule> {
-    germinal_center_gc_grn_odes_for!(p)
-}
-
-pub fn germinal_center_gc_grn_model(p: &GcGrnParams) -> Model {
+pub fn germinal_center_gc_model(params: &GcGrnParams) -> Model {
     Model::from_rules(
         "germinal_center_FOXO1_BCL6_AICDA_CXCR4",
         vec![],
@@ -110,5 +96,5 @@ pub fn germinal_center_gc_grn_model(p: &GcGrnParams) -> Model {
         None,
     )
     .expect("empty rules compile")
-    .with_ode_rules(germinal_center_gc_grn_odes(p))
+    .with_ode_rules(germinal_center_gc_odes!(params))
 }

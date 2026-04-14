@@ -1,4 +1,4 @@
-use bio_math::germinal_center_gc::{germinal_center_gc_grn_model, GcGrnParams};
+use bio_math::germinal_center_gc::{germinal_center_gc_model, GcGrnParams};
 use bio_math::model::CellState;
 
 fn run_to_steady(m: &bio_math::Model, foxo1_ko: bool) -> CellState {
@@ -20,8 +20,8 @@ fn run_to_steady(m: &bio_math::Model, foxo1_ko: bool) -> CellState {
 }
 
 fn main() {
-    let p = GcGrnParams::default();
-    let m = germinal_center_gc_grn_model(&p);
+    let params = GcGrnParams::default();
+    let m = germinal_center_gc_model(&params);
     let wt = run_to_steady(&m, false);
     let ko = run_to_steady(&m, true);
     println!("Same cues: Tfh_help=0.6, CXCL12=0.7; dt=0.05 x 400 steps");

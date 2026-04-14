@@ -66,6 +66,11 @@ impl Model {
         self
     }
 
+    pub fn append_ode_rules(mut self, extra: Vec<OdeRule>) -> Self {
+        self.ode_rules.extend(extra);
+        self
+    }
+
     pub fn evaluate(&self, cell_type: &str, signals: &SignalEnv) -> BehaviorMap {
         let mut out = BehaviorMap::new();
         for set in &self.compiled.behavior_sets {

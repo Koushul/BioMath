@@ -1,19 +1,18 @@
-use bio_math::bio_grn;
-use bio_math::expr::{behavior, const_, hill, param};
 use bio_math::model::CellState;
+use bio_math::{const_, cue, gene, grn, hill, Model};
 
 fn main() {
-    let odes = bio_grn! {
+    let odes = grn! {
         in "cell", d "A" / dt =
-            const_(0.2) * hill(param("S"), 0.5, 2.0) * (const_(1.0) - behavior("A"))
-            - const_(0.1) * behavior("A"),
+            const_(0.2) * hill(cue!(S), 0.5, 2.0) * (const_(1.0) - gene!(A))
+            - const_(0.1) * gene!(A),
             bounded_by (0.0, 1.0);
         in "cell", d "B" / dt =
-            const_(0.15) * behavior("A") * (const_(1.0) - behavior("B"))
-            - const_(0.08) * behavior("B"),
+            const_(0.15) * gene!(A) * (const_(1.0) - gene!(B))
+            - const_(0.08) * gene!(B),
             bounded_by (0.0, 1.0);
     };
-    let m = bio_math::Model::from_rules("two_gene", vec![], Default::default(), None)
+    let m = Model::from_rules("two_gene", vec![], Default::default(), None)
         .unwrap()
         .with_ode_rules(odes);
 
